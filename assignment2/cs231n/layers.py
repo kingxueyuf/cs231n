@@ -388,7 +388,37 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
+    N = x.shape[0]
+    C = x.shape[1]
+    H = x.shape[2]
+    W = x.shape[3]
     
+    F = w.shape[0]
+    
+    HH = w.shape[2]
+    WW = w.shape[3]
+    
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    
+    H_new = int(1 + (H + 2 * pad - HH) / stride)
+    W_new = int(1 + (W + 2 * pad - WW) / stride)
+    
+    activation_map_per_batch = np.zeros((N, F, H_new, W_new))
+    for n in range(N):
+        # For each input of the batch
+        activation_map_per_filter = np.zeros((F, H_new, W_new))
+        for f in range(F):
+            # For each of the filter
+            for c in range(C):
+                # For each of the channel
+                bias_per_filter = b[f]
+                activation_map_per_filter_per_channel = conv_one_channel(np.pad(x[n,c], pad, 'constant'), w[f,c], stride, bias_per_filter)
+                activation_map_per_filter[f] += activation_map_per_filter_per_channel
+            print(activation_map_per_filter[f])
+        print('n',n)
+        activation_map_per_batch[n] = activation_map_per_filter
+    out = activation_map_per_batch
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -396,6 +426,45 @@ def conv_forward_naive(x, w, b, conv_param):
     return out, cache
 
 
+def conv_one_channel(feature_map, filter_map, stride, bias_per_filter):
+    """
+    Put one filter on one feature map
+    Reture the conv feture map
+    """
+    hh = []
+    feature_map_h = feature_map.shape[0]
+    filter_map_h = filter_map.shape[0]
+    
+#     print('feature_map_h ', feature_map_h)
+#     print('filter_map_h  ', filter_map_h)
+    
+    feature_map_w = feature_map.shape[1]
+    filter_map_w = filter_map.shape[1]
+    
+#     print('feature_map_w ', feature_map_w)
+#     print('filter_map_w  ', filter_map_w)
+    
+    H_new = int((feature_map_h - filter_map_h) / stride) + 1
+    W_new = int((feature_map_w - filter_map_w) / stride) + 1
+    for h_i in range(H_new):
+        ww = []
+        for w_i in range(W_new):
+            h_start = h_i*stride
+            h_end = h_i*stride + filter_map_h
+            w_start = w_i*stride
+            w_end = w_i*stride + filter_map_w
+            
+            activation_map = feature_map[h_start:h_end, w_start:w_end]
+#             print('---------- receptive field ----------')
+#             print(activation_map)
+            ww.append(np.sum(np.multiply(activation_map, filter_map)) + bias_per_filter)
+        hh.append(ww)
+    result = np.array(hh)
+#     print('---------- activation map ----------')
+#     print(result)
+#     print(result.shape)
+    return result
+    
 def conv_backward_naive(dout, cache):
     """
     A naive implementation of the backward pass for a convolutional layer.
