@@ -412,13 +412,17 @@ def conv_forward_naive(x, w, b, conv_param):
             # For each of the filter
             for c in range(C):
                 # For each of the channel
-                bias_per_filter = b[f]
-                activation_map_per_filter_per_channel = conv_one_channel(np.pad(x[n,c], pad, 'constant'), w[f,c], stride, bias_per_filter)
+                activation_map_per_filter_per_channel = conv_one_channel(np.pad(x[n,c], pad, 'constant'), w[f,c], stride)
                 activation_map_per_filter[f] += activation_map_per_filter_per_channel
-            print(activation_map_per_filter[f])
-        print('n',n)
+            # Add bias
+            bias_per_filter = b[f]
+            activation_map_per_filter[f] += np.full(activation_map_per_filter[f].shape, bias_per_filter)
+#             print("---")
+#             print(activation_map_per_filter[f])
+#         print('n',n)
         activation_map_per_batch[n] = activation_map_per_filter
     out = activation_map_per_batch
+#     print(out)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -426,7 +430,7 @@ def conv_forward_naive(x, w, b, conv_param):
     return out, cache
 
 
-def conv_one_channel(feature_map, filter_map, stride, bias_per_filter):
+def conv_one_channel(feature_map, filter_map, stride):
     """
     Put one filter on one feature map
     Reture the conv feture map
@@ -457,7 +461,7 @@ def conv_one_channel(feature_map, filter_map, stride, bias_per_filter):
             activation_map = feature_map[h_start:h_end, w_start:w_end]
 #             print('---------- receptive field ----------')
 #             print(activation_map)
-            ww.append(np.sum(np.multiply(activation_map, filter_map)) + bias_per_filter)
+            ww.append(np.sum(np.multiply(activation_map, filter_map)))
         hh.append(ww)
     result = np.array(hh)
 #     print('---------- activation map ----------')
