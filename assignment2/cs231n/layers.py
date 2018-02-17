@@ -486,13 +486,65 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    (x, w, b, conv_param) = cache
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    
+    N = x.shape[0]
+    C = x.shape[1]
+    H = x.shape[2]
+    W = x.shape[3]
+    
+    F = w.shape[0]
+    
+    HH = w.shape[2]
+    WW = w.shape[3]
+    
+    dx = np.zeros((N,C,H,W))
+    dw = np.zeros((F,C,HH,WW))
+    db = np.zeros((F))
+    for n in range(N):
+        d_activation_map = dout[n]
+        for f in range(F):
+            # For each filter
+            d_activation_map_per_filter = d_activation_map[f]
+            for c in range(C):
+                # For each channel
+                dfeature_map, dfitler_map = dconvolution(stride, pad, w[f,c], d_activation_map_per_filter, x[n,c])
+                dx[n,c] += dfeature_map
+                dw[f,c] += dfitler_map
+            db[f] += np.sum(d_activation_map_per_filter)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     return dx, dw, db
 
-
+def dconvolution(stride, pad, filter_map, d_activation_map, feature_map):
+    H = d_activation_map.shape[0]
+    W = d_activation_map.shape[1]
+    
+    filter_h = filter_map.shape[0]
+    filter_w = filter_map.shape[1]
+    
+    H_new = filter_h + (H - 1) * stride
+    W_new = filter_w + (W - 1) * stride
+    
+    dfeature_map = np.zeros((H_new, W_new)) 
+    
+    # Calculate derivatives wrt feature_map
+    for h in range(H):
+        for w in range(W):
+            dfeature_map[h*stride:h*stride+filter_h,w*stride:w*stride+filter_w] += filter_map * d_activation_map[h,w]
+    
+    dfilter= np.zeros((filter_h,filter_w))
+    feature_map_with_pad = np.pad(feature_map, pad, 'constant')
+    
+    # Calculate derivatives wrt filter
+    for h in range(H):
+        for w in range(W):
+            dfilter += feature_map_with_pad[h*stride:h*stride+filter_h, w*stride:w*stride+filter_w] * d_activation_map[h,w]
+    return dfeature_map[pad:dfeature_map.shape[0]-pad,pad:dfeature_map.shape[1]-pad], dfilter
+    
 def max_pool_forward_naive(x, pool_param):
     """
     A naive implementation of the forward pass for a max pooling layer.
